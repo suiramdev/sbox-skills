@@ -1,53 +1,64 @@
 ---
 name: sbox
-description: "Automatically apply for S&Box C# projects to retrieve exact SDK entities/signatures, including gameplay and modding APIs."
+description: "Grounded S&Box documentation retrieval from https://sdocs.suiram.dev. Automatically apply for any S&Box game project, including gameplay, entities, components, systems, packages, addons, modding, and C# work (.cs, .csproj, .sln, dotnet). Use before writing, reviewing, refactoring, or debugging S&Box code."
 ---
 
-# search_sdk
+# S&Box Grounded Retrieval
 
-Use this skill when you need grounded SDK retrieval.
+Retrieve S&Box APIs and signatures from `https://sdocs.suiram.dev` and use only grounded results.
 
-## Automatic Activation (Required)
+Treat this skill as the default path for S&Box game projects.
 
-Apply this skill automatically whenever the task involves S&Box C# development.
+## API Surface
 
-Activation signals include:
+- Base URL: `https://sdocs.suiram.dev`
+- Primary search:
+  - `GET /api/sbox/search?q=<query>`
+  - `POST /api/sbox/search` with JSON body containing `query`
+- Fallback search:
+  - `GET /api/search?q=<query>`
+  - `POST /api/search` with JSON body containing `query`
+  - `GET /api/sdk/search?q=<query>`
+  - `POST /api/sdk/search` with JSON body containing `query`
+- Detail routes:
+  - `GET /api/sdk/describe?id=<id>`
+  - `GET /api/sdk/get-signature?id=<id>`
+- Optional Q&A:
+  - `POST /api/sdk/ask`
 
-- C# project files such as `.cs`, `.csproj`, `.sln`, or `dotnet` workflows
-- S&Box-specific code or concepts (Sandbox entities, components, systems, gameplay/modding)
-- Requests to write, explain, refactor, or debug S&Box C# code
+## Retrieval Workflow
 
-Do not require the user to explicitly mention this skill. Treat it as implicit in S&Box C# workflows.
+1. Start with `search_sbox_docs` semantics via `/api/sbox/search` for gameplay/modding questions.
+2. If results are sparse or missing, query `/api/search` and `/api/sdk/search`.
+3. For any candidate API to use in code, resolve its `id` and fetch:
+   - `/api/sdk/describe?id=<id>`
+   - `/api/sdk/get-signature?id=<id>`
+4. Preserve returned signatures exactly (`displaySignature`, `signature`, `sourceSignature`).
+5. If multiple near-matches exist, ask for refinement (namespace, type, method overload, parameter types).
+6. Use `/api/sdk/ask` only as supporting context, then confirm final APIs with search + signature routes.
 
-## Tool Definition
+## Response Rules
 
-- Name: `search_sdk`
-- Schema: `apps/fumadocs/data/sdk/tools/search_sdk.json`
-- Executor route: `POST /api/sdk/tools/search-sdk`
-- Underlying abstraction: `GET|POST /api/search` and `GET|POST /api/sdk/search`
+- Never invent S&Box APIs, types, members, namespaces, or signatures.
+- Cite grounded identifiers when proposing code (at minimum include API name + signature).
+- Prefer APIs with clearer member metadata (`description`, `parameters`, `returnType`, `exampleUsage`) when available.
+- Before writing or editing S&Box code, run retrieval first.
+- If no grounded match is found, say so explicitly and request a narrower query.
 
-## s&box Modding Search
+## Query Quality
 
-For s&box gameplay/entity/system tasks, prefer the s&box-specific retrieval
-tool and endpoint:
+Use specific, narrow queries first:
 
-- Name: `search_sbox_docs`
-- Schema: `apps/fumadocs/data/sdk/tools/search_sbox_docs.json`
-- Executor route: `POST /api/sdk/tools/search-sbox-docs`
-- Underlying abstraction: `GET|POST /api/sbox/search`
+- `Sandbox.GameObject`
+- `Sandbox.Component Enabled`
+- `Sandbox.Services.Players.Overview.Player`
+- `OnUpdate override`
 
-## Reliability Rules
+Then broaden only if needed.
 
-- Never invent APIs not returned by search results.
-- Preserve signatures exactly as `signature`/`sourceSignature` from results.
-- If top results are ambiguous, ask for namespace/class/parameter refinement.
-- For gameplay or mod code, always query docs before proposing or writing code.
-- Prefer `search_sbox_docs` results when they are available because they include
-  `methodName`, `description`, `parameters`, `returnType`, and `exampleUsage`.
-- In S&Box C# tasks, use this skill by default even if the user does not name it.
+## Tool Mapping
 
-## Companion Routes
+- `search_sbox_docs` -> `https://sdocs.suiram.dev/api/sbox/search`
+- `search_sdk` -> `https://sdocs.suiram.dev/api/search` and `https://sdocs.suiram.dev/api/sdk/search`
 
-- `GET /api/sdk/describe?id=<id>`
-- `GET /api/sdk/get-signature?id=<id>`
-- `POST /api/sdk/ask` for retrieval-grounded Q&A.
+Use these mappings even when the user does not explicitly name the skill.
